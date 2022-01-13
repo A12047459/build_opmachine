@@ -1,0 +1,1467 @@
+111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+day01
+web服务器对比
+unix和linux平台下
+	Apache, Nginx(开源软件), Tengine(为Nginx的优化定制版,淘宝), Lighttpd
+	Tomcat, IBM WebSphere, Jobss
+Windows平台下
+	微软公司的IIS(Internet Information Server)
+Nginx(engine X)和Apache对比的优点:
+	软件小
+	运行快
+	效率高
+	并发量更高(5万,Apache并发量为3万)
+    概念:
+	俄罗斯人编写十分轻量级的HTTP服务器
+	高性能的HTTP和反向代理服务器,同时也是一个IMAP/POP/SMTP代理服务器
+	http://nginx.org/
+
+OSI 分层,通讯原理:封装,解封装
+    每层数据都有自己的头部信息:
+	头部[数据]
+	头部[头部[数据]]
+	......
+客户端--------服务器
+发送请求----发送回应
+
+
+如何提前安装原码包依赖包?
+官方网站文档查询,部分官网有说明
+正常安装流程,按提示反馈进行逐一安装
+
+安全策略: 都是针对用户和组
+一般以root用户启动的程序,会继承root的身份,此时程序会存在安全问题,当程序被其他电脑控制时,会存在安全问题
+因此,为了安全考虑,一般都是以普通用户执行相应的程序,从而保障安全
+故在安装nginx时,需要建立一用户身份:(htpt是在yum安装的过程中已经自动创建好Apache的用户)
+useradd -s /sbin/nologin nginx
+
+nginx是模块化设计的软件,
+几乎现代化的软件都是模块的,可拆分安装,定制化程度高
+一般都有一定数量的默认模块
+安装步骤:
+    1) 安装依赖包
+	yum -y install gcc pcre-devel openssl-devel
+    2) 新增启动程序的普通用户(一般为nginx,http通过yum安装的时候会自动安装,而nginx源码安装不会自动创建用户)
+	useradd -s /sbin/nologin nginx
+    3) 解压源码包
+	tar  -xf   nginx-1.10.3.tar.gz
+    4) 切换到源码目录中
+	cd  nginx-1.10.3
+    5) 配置,指定安装目录/功能模块等选项
+	./configure --user=nginx --group=nginx --with-http_ssl_module      //--指定启动用户,--指定启动的用户组,--添加模块(不添加使用without)
+    6) 编译并安装
+	make && make install
+
+nginx命令的用法:
+	[root@proxy ~]# /usr/local/nginx/sbin/nginx                    //启动服务
+	[root@proxy ~]# /usr/local/nginx/sbin/nginx -s stop            //关闭服务
+	[root@proxy ~]# /usr/local/nginx/sbin/nginx -s reload        //重新加载配置文件
+	[root@proxy ~]# /usr/local/nginx/sbin/nginx -V                //查看软件信息
+	[root@proxy ~]# ln -s /usr/local/nginx/sbin/nginx /sbin/        //创建软连接,方便后期使用
+查看系统中启动的端信息:
+	[root@proxy ~]# netstat  -pantul  |  grep nginx    //-p显示程序,-a显示所有,-n以数字格式显示端口号,-t显示TCP连接端口,-u显示UDP连接的端口,-l显示服务正在监听的端口信息
+
+关闭防火墙和SElinux(非必要操作,如果有则关闭):
+	[root@proxy ~]# systemctl stop firewalld
+	[root@proxy ~]# setenforce 0
+测试:
+	[root@client ~]# curl http://192.168.4.5
+
+
+一个IP对应一个主机
+一个端口对应一个服务
+
+服务器nginx升级(由1.10升级至1.12)(这里主要是升级主程序,为保护原来的配置和日志文件等,不覆盖安装,此次升级主要是为了能顺利安装上加密的模块)
+升级原因:
+1.版本老旧
+2.缺少模块,升级相同的版本
+
+源码目录下:src(source)C语言的源代码
+
+升级工作(步骤与安装的基本一样,仅选择的源码包不同):
+    升级前,主程序的版本为1.10
+	/usr/local/nginx/sbin/nginx(1.10)
+    升级后的主程序的: (执行到make步骤,不进行make install步骤)
+	/root/lnmp_soft/nginx-1.12.2/objs/nginx(1.12)
+
+    用升级后的的主程序替换老版本的文件
+	[root@proxy nginx-1.12.2]# mv /usr/local/nginx/sbin/nginx /usr/local/nginx/sbin/nginxold    //备份老版本
+    	[root@proxy nginx-1.12.2]# cp objs/nginx /usr/local/nginx/sbin/    //拷贝新版本到指定目录
+	[root@proxy nginx-1.12.2]# make upgrade    //升级主程序,在解压出来的源码包路径下执行该程序
+
+配置:
+    主配置文件:
+	/usr/local/nginx/conf/nginx.conf
+    nginx配置:
+	server {
+		listen 80; 
+		server_name www.dachui.com;
+		root html;       //默认写的是相对路径,也可以写绝对路径"/usr/local/nginx/html";注意,采用相对路径(相对于安装的路径)时,不需要双引号,只有采用了绝对路径时才需要
+		index index.html index.htm;          //默认首页,一般在/usr/local/nginx/html下有很多网页文件
+	}
+
+案例: 用户认证
+访问Web页面需要进行用户认证
+用户名为：tom，密码为：123456
+    1) 修改 vim /usr/local/nginx/conf/nginx.conf
+	.. ..
+	server {
+        listen       80;
+        server_name  localhost;
+        auth_basic "Input Password:";                        //认证提示符信息
+        auth_basic_user_file "/usr/local/nginx/pass";        //认证的密码文件
+	.. ..
+    2) 生成密码文件，创建用户及密码
+	使用htpasswd命令创建账户文件，需要确保系统中已经安装了httpd-tools。
+	yum -y install  httpd-tools
+	htpasswd -c /usr/local/nginx/pass   tom        //创建密码文件,此时-c选项表示新建用户,后面如果是追加新用户的时候,不能再使用-c选项,否则会将原来的文件覆盖,丢失原来用户的信息
+	htpasswd  /usr/local/nginx/pass   jerry      //追加用户，不使用-c选项
+	cat /usr/local/nginx/pass     //查看已经加密的用户和密码
+     3）重启Nginx服务
+	/usr/local/nginx/sbin/nginx -s reload    //重新加载配置文件
+     4) 测试
+	firefox http://192.168.4.5     //输入密码后可以访问
+    注:
+	tailf /usr/local/nginx/logs/error.log    //动态查看最后几行,一般先回车至屏幕清空,然后再去执行网的刷新操作,从而获取错误的日志状态,此方法一般用于辅助排错
+
+案例: 基于域名的虚拟主机
+    沿用用户认证的例子，配置基于域名的虚拟主机，实现以下目标：
+	实现两个基于域名的虚拟主机，域名分别为www.a.com和www.b.com
+	对域名为www.a.com的站点进行用户认证，用户名称为tom，密码为123456
+    对比: http虚拟主机: 基于域名,基于IP,基于端口
+    1）修改Nginx服务配置，添加相关虚拟主机配置如下
+	vim /usr/local/nginx/conf/nginx.conf
+	.. ..
+	server {
+        listen       80;                                      //端口
+       	server_name  www.a.com;                                //域名
+		auth_basic "Input Password:";                        //认证提示符
+        auth_basic_user_file "/usr/local/nginx/pass";        //认证密码文件
+	  location / {
+            root   html;                                    //指定网站根路径
+            index  index.html index.htm;
+           }
+	.. ..
+	}
+	.. ..
+	server {
+        listen  80;                                        //端口
+        server_name  www.b.com;                                //域名
+	  location / { 
+	  	root   www;                                 //指定网站根路径
+		index  index.html index.htm;
+	    }
+	}
+    2) 创建网站根目录及对应首页文件
+	mkdir /usr/local/nginx/www
+	echo "www" > /usr/local/nginx/www/index.html    //为网页写内容
+    3）重启nginx服务
+	/usr/local/nginx/sbin/nginx -s reload
+    4) 修改客户端主机192.168.4.10的/etc/hosts文件，进行域名解析
+	vim /etc/hosts
+	192.168.4.5    www.a.com  www.b.com
+    5) 测试(登录192.168.4.10客户端)
+	firefox http://www.a.com    //输入密码后可以访问
+	firefox http://www.b.com     //直接访问
+
+2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222
+day02
+nginx
+
+http为明文传输,安全性不高
+http+ssl=https为加密传输,提高安全
+
+加密方式:
+对称加密:AES, DES    //加密和解密都是同一把钥匙,算法安全,目前还未被破解(暴力破解,枚举法),但基于工作的原理,仅在本地安全,而在网络上却不安全
+非对称加密: RSA, DSA   //公钥私钥模式,用户都有通过公钥加密,但只能通过服务端的私钥才能解密,在网络上传输更安全
+信息摘要:md5,sha256,主要应用在数据完整性校验
+md5sum和sha512sum的加密只与文档的内容有关,与时间无关,与文档名称无关,可用来检验数据的完整性和变动
+
+案例: SSL虚拟主机
+沿用上面的案例,配置基于加密网站的虚拟主机，实现以下目标：
+域名为www.c.com
+该站点通过https访问
+通过私钥、证书对该站点所有数据加密
+
+    1) 生成私钥与证书
+	cd /usr/local/nginx/conf     //切换到配置文件目录下
+	openssl genrsa > cert.key    //采用RSA算法,生成私钥
+	openssl req -new -x509 -key cert.key > cert.pem    //req生成证书(公钥),-key选项为指定私钥,后面参数指定
+    2）修改Nginx配置文件，设置加密网站的虚拟主机
+	vim  /usr/local/nginx/conf/nginx.conf
+	… …    
+	server {
+        listen       443 ssl;
+        server_name            www.c.com;
+        ssl_certificate      cert.pem;         	#这里是证书(公钥)文件
+        ssl_certificate_key  cert.key;         	#这里是私钥文件
+        ssl_session_cache    shared:SSL:1m;     	#ssl的缓存时间为1分钟
+        ssl_session_timeout  5m;                	#等待超时设定为5分钟
+        ssl_ciphers  HIGH:!aNULL:!MD5;          	#加密方式不允许空值,不允许MD5加密
+        ssl_prefer_server_ciphers  on;		#开启SSL偏好服务器密码器
+        location / {					#设置网页文件路径和文件
+            root   html;
+            index  index.html index.htm;
+          }
+    	}
+    3) 重启nginx
+	[root@proxy ~]# /usr/local/nginx/sbin/nginx -s reload服务
+    4) 修改客户端主机192.168.4.10的/etc/hosts文件，进行域名解析
+	[root@client ~]# vim /etc/hosts
+    5) 登录192.168.4.10客户端主机进行测试
+	[root@client ~]# firefox https://www.c.com       //信任证书后才可以正常访问
+
+
+
+***************************************************************
+什么是动态页面
+静态,动态
+	静态: 直接呈现固定的网页,服务端的原始网页=浏览器访问到的网页
+	动态: 每次打开页面,需要由计算机执行一次代码后(java,php,py,sh...)后再呈现结果,即服务端的原始网页!=浏览器访问到的网页
+	用户----------------服务器(a.jpg,a.html, a.mp3,doc)
+			服务器(java,php,py,sh...)代码在服务器上运行
+*****************************************************************	
+部署LNMP(linux nginx mariadb php)
+
+mariadb(客户) 
+mariadb-server(服务) 
+mariadb-devel(依赖包)
+
+php   解释器
+php-fpm    php的后台服务
+php-mysql(模块)    php数据库模块,实现与数据库mysql互连,如果想连接其他的数据
+
+关于程序与进程理解:
+程序(硬盘)----内存(进程)
+进程: 每多一个进程都会成倍地消耗内存,各个进程之间相对独立
+线程: 共享一个进程中的内存,起到节省内存的作用,所在的进程关闭,则其内的所有进程都会关闭
+
+实现动态和静态网页配置:
+    用户访问网页:
+	如果是静态,nginx直接返回文件
+	如果是动态,nginx转发给9000端口(php)
+    location匹配用户地址栏(从域名往后的部分)    //此时存在多个location时,类似于case的匹配机制
+    location支持正则表达式(可以实现一对多的匹配工作)
+    配置文件中location部分的格式:
+	location / {                //根的优先级一般为最低,优先匹配其他的路径
+		deny 1.1.1.1;     //拒绝1.1.1.1,允许其他所有
+		allow all; }
+	location /abc {        //匹配/abc地址行,精确匹配
+		deny all; }
+	location ~ /abc {      //匹配含有"/abc"的地址行,模糊匹配
+		deny all; }
+	loction /dachui {        //模糊匹配/dachuiZZ地址行
+		allow; }
+	location ~ \.php$ {    //模糊匹配以.php结尾的地址
+	  root html;
+	  fastcgi_pass 127.0.0.1:9000;   //以php结尾的网页文件,在html目录中找到后,将转发给本机端口为9000的服务处理(php-fpm服务)  辅记: cgi(common gateway interface,公供网关接口)
+	  include   fastcgi.conf; }    //表示加载其他配置文件的内容到当前文件,fastcgi.conf配置中已经定义好一定数量的变量,方便调用
+
+    测试验证:
+	firefox http://www.a.com           //除了IP为1.1.1.1被拒绝,其他IP都能访问
+	firefox http://www.a.com/abc       //精确匹配/abc,此时被拒绝访问
+	firefox http://www.a.com/abcdad    //模糊匹配"/abc",此时被拒绝访问
+	firefox http://www.a.com/dachui    //精确匹配/dachui此时所有的IP都能访问
+
+    注: 一般实现静动分离两种网页,仅需要使用两个location即可:
+	location / {}     
+	location ~ \.php$ {}
+
+查看php-fpm配置文件（实验中不需要修改该文件）
+vim /etc/php-fpm.d/www.conf
+[www]
+listen = 127.0.0.1:9000            //PHP端口号
+pm.max_children = 32                //最大进程数量
+pm.start_servers = 15                //最小进程数量
+pm.min_spare_servers = 5            //最少需要几个空闲着的进程
+pm.max_spare_servers = 32            //最多允许几个进程处于空闲状态
+
+33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333
+day03
+地址重写rewrite(地址栏被改写了)
+www.baidu.com-----https://www.baidu.com
+www.360buy.com-----www.jd.com
+
+案例3：地址重写
+	沿用练习二，通过调整Nginx服务端配置，实现以下目标：
+	1.所有访问a.html的请求，重定向到b.html;
+	2.所有访问192.168.4.5的请求重定向至www.tmooc.cn；
+	3.所有访问192.168.4.5/下面子页面，重定向至www.tmooc.cn/下相同的页面；
+	4.实现firefox与curl访问相同页面文件，返回不同的内容。
+    方案:
+	rewrite regex replacement flag
+	rewrite 旧地址 新地址 [选项]    //旧地址支持正则表达式,一般写网页的实际路径,如/a.html表示在网页实际路径下的a.html网页文件
+	regex : regular expression   正则表达式
+
+    步骤1: 修改配置文件(访问a.html重定向到b.html)
+	1）修改Nginx服务配置：
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		.. ..
+		server {
+       	  listen       80;
+       	  server_name  localhost;
+		  rewrite /a.html  /b.html redirect;    //后面的redirect选项,可不写,写了会实现地址栏的a.html改成b.html,不写则仅网页的内容有变化,而地址栏不变   
+		charset utf-8         //此设置文字读取类型为万国码uft-8,能够实现读取b.html中的的中文内容(前提是访问的客户端支持中文显示)
+		  location / {
+		    root   html;
+		index  index.html index.htm;
+		  }
+		}
+		[root@proxy ~]# echo "BB" > /usr/local/nginx/html/b.html
+	2）重新加载配置文件
+		[root@proxy ~]# /usr/local/nginx/sbin/nginx  -s  reload
+	3）客户端测试
+		[root@client ~]# firefox  http://192.168.4.5/a.html
+
+    补充知识:
+	编码: 实现人的语言与计算机语言一一对应
+	ASCII 127位(字母数字符号)
+	GB2312 兼容ASCII,并新增中国常用汉字
+	apple的万国编码: utf-8    实现多国的语言设置
+
+    步骤2: 修改配置文件(访问192.168.4.5的请求重定向至www.tmooc.cn)
+	1) 修改Nginx服务配置
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		.. ..
+		server {
+		        listen       80;
+		        server_name  localhost;
+		  rewrite ^/  http://www.tmooc.cn/;     //"^/"表示匹配所有,改写地址栏的网页地址为http://www.tmooc.cn/(不同于网页文件的改写,此时地址栏将同时改写)
+		  location / {
+		    root   html;
+		  index  index.html index.htm;
+		# rewrite /a.html  /b.html  redirect;
+		  }
+		}
+	2）重新加载配置文件
+		[root@proxy ~]# /usr/local/nginx/sbin/nginx  -s  reload
+	
+	3）客户端测试（真实机测试，真实机才可以连接tmooc）
+		[root@room9pc01 ~]# firefox  http://192.168.4.5
+    补充内容:
+	rewrite ^/(.*)  http://www.tmooc.cn/$1;    //注意nginx中的正则用法,这里的保留和粘贴功能与sed命令略有区别,此时$1表示将第一段保留的内容粘贴,相当于sed命令中的\1(同理,$2相当于sed中的\2),所以,这里实现的是将原来的二级网页地址栏内容变为新的地址的二级网页内容
+	
+    步骤3：修改配置文件(访问192.168.4.5/下面子页面，重定向至www.tmooc.cn/下相同的页面)
+	1) 修改Nginx服务配置
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		.. ..
+		server {
+	        listen       80;
+	        server_name  localhost;
+		  rewrite ^/(.*)$  http://www.tmooc.cn/$1;    //改写了前面的域名,但下面的子页面保持一样
+		  location / {
+		    root   html;
+		  index  index.html index.htm;
+		  }
+		}
+	2）重新加载配置文件
+		[root@proxy ~]# /usr/local/nginx/sbin/nginx  -s  reload
+	3) 客户端测试（真实机测试，真实机才可以连接tmooc）
+		[root@room9pc01 ~]# firefox  http://192.168.4.5
+		[root@room9pc01 ~]# firefox  http://192.168.4.5/test
+    补充知识:
+	访问日志格式说明(日志格式由配置文件指定,不设置则启动默认):
+	log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+    #                  '$status $body_bytes_sent "$http_referer" '
+    #                  '"$http_user_agent" "$http_x_forwarded_for"';
+	$remote_addr: 远程登录的地址
+	$remote_user: 远程登录用户
+	$time_local: 当地时区
+	$request: 请求内容
+	$status: 状态
+	$body_bytes_sent :主体字节发送内容
+	$http_referer: 跳转来源
+	$http_user_agent: 用户信息(登录的系统,浏览器等)
+	$http_x_forwarded_for: 转信目标
+	根据这些信息,可以利用正则表达式对旧地址进行正则匹配,实现模糊匹配,可以用来实现分离显示(即控制不同的来源显示不同的页面)
+    步骤4: 修改配置文件(实现curl和火狐访问相同链接返回的页面不同)
+	1) 创建网页目录以及对应的页面文件：
+		[root@proxy ~]# echo "I am Normal page" > /usr/local/nginx/html/test.html
+		[root@proxy ~]# mkdir  -p  /usr/local/nginx/html/firefox/
+		[root@proxy ~]# echo "firefox page" > /usr/local/nginx/html/firefox/test.html
+	2) 修改Nginx服务配置
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		.. ..
+		server {
+	        listen       80;
+	        server_name  localhost;
+		  location / {
+		    root   html;
+		  index  index.html index.htm;
+		  }
+			
+		  if ($http_user_agent ~* firefox) {            //识别客户端firefox浏览器，~符号代表正则匹配，*符号代表不区分大小写
+		  rewrite ^(.*)$  /firefox/$1;
+		  }
+		}
+	3）重新加载配置文件
+		[root@proxy ~]# /usr/local/nginx/sbin/nginx  -s  reload
+	4）客户端测试
+		[root@client ~]# firefox  http://192.168.4.5/test.html
+		[root@client ~]# curl     http://192.168.4.5/test.html
+
+	5）地址重写格式【总结】
+		rewrite 旧地址 新地址 [选项];
+		选项说明:
+		    last 不再读其他rewrite    //注意: 此last仅作用于当前的location,不影其他location的语句
+		    break 不再读其他语句，结束请求    //中断
+		    redirect 临时重定向    //此项主要是给搜索引擎用于识别是否进行地址更新之用
+		    permament 永久重定向    //此项主要是给搜索引擎用于识别是否进行地址更新之用
+	正则表达式匹配模式如下:
+		区分大小写匹配: ~
+		不区分大小写匹配: ~*
+		区分大小写匹配: !~
+		不区分大小写匹配: !~*
+
+案例1: Nginx反向代理
+    使用Nginx实现Web反向代理功能，实现如下功能：
+	后端Web服务器两台，可以使用httpd实现
+	Nginx采用轮询的方式调用后端Web服务器
+	两台Web服务器的权重要求设置为不同的值
+	最大失败次数为1，失败超时时间为30秒
+    方案:                                         
+    使用4台RHEL7虚拟机，其中一台作为Nginx代理服务器，该服务器需要配置两块网卡，IP地址分别为192.168.4.5和192.168.2.5，两台Web服务器IP地址分别为192.168.2.100和192.168.2.200。客户端测试主机IP地址为192.168.4.10。
+	代理两个功能: 调度(负载均衡),健康检查
+    步骤: 实现反向代理
+	1）部署后端Web1和web2服务器
+		[root@web1 ~]# yum  -y  install  httpd
+		[root@web1 ~]# echo "192.168.2.100" > /var/www/html/index.html   //对于web2,仅改ip为192.168.2.200
+		[root@web1 ~]# systemctl restart httpd
+		[root@web1 ~]# firewall-cmd --set-default-zone=trusted
+		[root@web1 ~]# setenforce 0
+	2) 配置Nginx服务器，添加服务器池，实现反向代理功能
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		.. ..
+		http {
+		.. ..
+		upstream webserver {             #使用upstream定义后端服务器集群，集群名称任意(如webserver)
+                server 192.168.2.100:80;      #使用server定义集群中的具体服务器和端口
+                server 192.168.2.200:80;
+	        }
+		.. ..
+		server {
+	        listen        80;
+	        server_name  localhost;
+	            location / {
+	            proxy_pass http://webserver;     #通过proxy_pass将用户的请求转发给webserver集群
+			root html;
+		        }
+		}
+	2）重启nginx服务:
+		[root@proxy ~]# /usr/local/nginx/sbin/nginx -s reload
+	3）客户端使用浏览器访问代理服务器测试轮询效果
+		[root@client ~]# curl http://192.168.4.5            //使用该命令多次访问查看效果
+		[root@client ~]# curl http://192.168.4.5            //使用该命令多次访问查看效果
+
+
+   Nginx调度算法:
+	轮询(默认的): 逐一循环调度
+	weight: 指定轮询几率,权重值和访问比率成正比
+	ip_hash: 根据客户端IP分配固定的后端服务器
+    服务器组主机状态
+	down: 表示当前server暂时不参与负载
+	max_fails: 允许请求失败的次数(默认为1)
+	fail_timeout: max_fails失败后,暂时提供服务的时间
+
+    步骤2: 配置upstream服务器集群池属性
+	1）设置失败次数，超时时间，权重
+		eight可以设置后台服务器的权重，max_fails可以设置后台服务器的失败次数，fail_timeout可以设置后台服务器的失败超时时间。
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		.. ..
+		http {
+		.. ..
+		upstream webserver {
+      	      server 192.168.2.100 weight=1 max_fails=1 fail_timeout=30;    #weight设置服务器权重值，默认值为1, max_fails设置最大失败次数, fail_timeout设置失败超时时间，单位为秒, 
+      	      server 192.168.2.200 weight=2 max_fails=2 fail_timeout=30;
+      	      server 192.168.2.101 down;    #down标记服务器已关机，不参与集群调度
+        	}
+		.. ..
+		server {
+      	  listen        80;
+      	  server_name  localhost;
+      	      location / {
+      	      proxy_pass http://webserver;
+        		}
+		}
+	2）重启nginx服务
+		[root@proxy ~]# /usr/local/nginx/sbin/nginx -s reload
+	3）关闭一台后端服务器（如web1）
+		[root@web1 ~]# systemctl stop httpd
+	4）客户端使用浏览器访问代理服务器测试轮询效果
+		[root@client ~]# curl http://192.168.4.5            //使用该命令多次访问查看效果
+	5）再次启动后端服务器的httpd（如web1）
+		[root@web1 ~]# systemctl start httpd
+	6）客户端再次使用浏览器访问代理服务器测试轮询效果
+		[root@client ~]# curl http://192.168.4.5            //使用该命令多次访问查看效果
+    步骤3: 配置upstream服务器集群的调度算法
+	1）设置相同客户端访问相同Web服务器
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		.. ..
+		http {
+		.. ..
+		upstream webserver {
+                 ip_hash;       //通过ip_hash设置调度规则为：相同客户端访问相同服务器
+                server 192.168.2.100 weight=1 max_fails=2 fail_timeout=10;
+                server 192.168.2.200 weight=2 max_fails=2 fail_timeout=10;
+		        }
+		.. ..
+		server {
+		        listen        80;
+		        server_name  www.tarena.com;
+		        location / {
+		        proxy_pass http://webserver;
+		        }
+		}
+	2）重启nginx服务
+		[root@proxy ~]# /usr/local/nginx/sbin/nginx -s reload
+	3）客户端使用浏览器访问代理服务器测试轮询效果
+		[root@client ~]# curl http://192.168.4.5            //使用该命令多次访问查看效果
+
+
+44444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444
+day04
+    案例2：Nginx的TCP/UDP调度器
+	使用Nginx实现TCP/UDP调度器功能，实现如下功能：
+	后端SSH服务器两台
+	Nginx编译安装时需要使用--with-stream，开启ngx_stream_core_module模块
+	Nginx采用轮询的方式调用后端SSH服务器
+    方案:
+    使用4台RHEL7虚拟机，其中一台作为Nginx代理服务器，该服务器需要配置两块网卡，IP地址分别为192.168.4.5和192.168.2.5，两台SSH服务器IP地址分别为192.168.2.100和192.168.2.200。客户端测试主机IP地址为192.168.4.10。如图-2所示。
+     步骤一:部署支持1）部署nginx服务器4层TCP/UDP代理的Nginx服务器
+	1）部署nginx服务器
+	编译安装必须要使用--with-stream参数开启4层代理模块。
+		[root@proxy ~]# yum -y install gcc pcre-devel openssl-devel        //安装依赖包
+		[root@proxy ~]# tar  -xf   nginx-1.12.2.tar.gz
+		[root@proxy ~]# cd  nginx-1.12.2
+		[root@proxy nginx-1.12.2]# ./configure   \
+		> --with-http_ssl_module                //开启SSL加密功能
+		> --with-stream                         //开启4层反向代理功能(TCP,UDP)
+		[root@proxy nginx-1.12.2]# make && make install           //编译并安装
+    步骤二：配置Nginx服务器，添加服务器池，实现TCP/UDP反向代理功能
+	
+	1）修改/usr/local/nginx/conf/nginx.conf配置文件
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		stream {                              //启用TCP/UDP代理模块
+            	upstream backend {
+	           	   server 192.168.2.100:22;            //后端SSH服务器的IP和端口
+            	   server 192.168.2.200:22;
+			}
+            server {
+                listen 12345;                    //Nginx监听的端口
+                proxy_connect_timeout 1s;         //连接的超时时间，可选配置
+                proxy_timeout 3s;
+                proxy_pass backend;
+	             }
+		}
+		http {
+		.. ..
+		}
+	2）重启nginx服务
+		[root@proxy ~]# /usr/local/nginx/sbin/nginx -s reload
+	3）客户端使用访问代理服务器测试轮询效果
+		[root@client ~]# ssh 192.168.4.5 -p 12345            //使用该命令多次访问查看效果
+
+案例3：Nginx常见问题处理
+    本案例要求对Nginx服务器进行适当优化，解决如下问题，以提升服务器的处理性能：	
+	1.如何自定义返回给客户端的404错误页面
+	2.如何查看服务器状态信息
+	3.如果客户端访问服务器提示“Too many open files”如何解决
+	4.如何解决客户端访问头部信息过长的问题
+	5.如何让客户端浏览器缓存数据
+	6.日志切割
+	7.开启gzip压缩功能，提高数据传输效率
+	8.开启文件缓存功能
+    然后客户机访问此Web服务器验证效果：
+	使用ab压力测试软件测试并发量
+	编写测试脚本生成长头部信息的访问请求
+	客户端访问不存在的页面，测试404错误页面是否重定向
+	
+    步骤一：自定义报错页面
+	1）优化前，客户端使用浏览器访问不存在的页面，会提示404文件未找到
+	[root@client ~]# firefox http://192.168.4.5/xxxxx        //访问一个不存在的页面
+	2）修改Nginx配置文件，自定义报错页面
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		.. ..
+ 	       charset utf-8;                    //仅需要中文时需要改选项，可选项
+		error_page   404  /404.html;    //自定义错误页面
+		.. ..
+		[root@proxy ~]# vim /usr/local/nginx/html/404.html        //生成错误页面
+		Oops,No NO no page …
+		[root@proxy ~]# nginx -s reload
+	3）优化后，客户端使用浏览器访问不存在的页面，会提示自己定义的40x.html页面
+		[root@client ~]# firefox http://192.168.4.5/xxxxx        //访问一个不存在的页面
+	4）常见http状态码
+		200	一切正常
+		301	永久重定向
+		302	临时重定向
+		401	用户名或密码错误
+		403	禁止访问(客户端IP地址被拒绝)
+		404	文件不存在
+		414	请求URI头部太长
+		500	服务器内部错误
+		502	服务器作为网关或者代理时,为了完成请求访问下一个服务器,但该服务器反回了非法的应答(Bad Gateway)
+    补充知识:
+	服务器状态信息(status):
+	1.实时并发量
+	2.等待的数量
+	3.总连接数量是多少
+	4.pv量和uv量是多少
+	Page view:
+		wc -l /usr/local/nginx/logs/access.log    //手动检测PV
+	user view:
+		awk '{IP[$1]++}END{for(i in IP){print i,IP[i]}}' access.log    //手动检测UV
+
+	nginx提供了一个专门的模块:
+	./configure ----with-http_ssl_module --with-stream --with-http_stub_status_module
+
+    步骤二：如何查看服务器状态信息（非常重要的功能）
+	1）编译安装时使用--with-http_stub_status_module开启状态页面模块
+		[root@proxy ~]# tar  -zxvf   nginx-1.12.2.tar.gz
+		[root@proxy ~]# cd  nginx-1.12.2
+		[root@proxy nginx-1.12.2]# ./configure   \
+		> --with-http_ssl_module                        //开启SSL加密功能
+		> --with-stream                                //开启TCP/UDP代理模块
+		> --with-http_stub_status_module                //开启status状态页面
+		[root@proxy nginx-1.12.2]# make && make install    //编译并安装
+	2）启用Nginx服务并查看监听端口状态
+		[root@proxy ~]# /usr/local/nginx/sbin/nginx
+		[root@proxy ~]# ss  -anptu  |  grep nginx    //或者使用"netstat  -anptu  |  grep nginx"
+	3）修改Nginx配置文件，定义状态页面
+		[root@proxy ~]# cat /usr/local/nginx/conf/nginx.conf
+		… …
+		location /status {o
+                stub_status on;
+                 #allow IP地址;
+                 #deny IP地址;
+ 		 }
+		… …
+		[root@proxy ~]# nginx
+	4）优化后，查看状态页面信息
+		[root@proxy ~]# curl  http://192.168.4.5/status
+    	状态页面信息说明(Status):　
+		Active connections：当前活动的连接数量。
+		Accepts：已经接受客户端的连接总数量。
+		Handled：已经处理客户端的连接总数量。
+		（一般与accepts一致，除非服务器限制了连接数量）。
+		Requests：客户端发送的请求数量。
+		Reading：当前服务器正在读取客户端请求头的数量。
+		Writing：当前服务器正在写响应信息的数量。
+		Waiting：当前多少客户端在等待服务器的响应。
+
+    步骤三：优化Nginx并发量
+	ab -c 1000 -n 1000 http://192.168.4.5/    //模拟多个客户端,和访问次数对服务器进访问,对服务器进行高并发测试,注意一定要在地址后面加上斜线
+	-c client   -n number
+	1）优化前使用ab高并发测试
+		[root@proxy ~]# ab -n 2000 -c 2000 http://192.168.4.5/
+		Benchmarking 192.168.4.5 (be patient)
+		socket: Too many open files (24)                //提示打开文件数量过多
+	2）修改Nginx配置文件，增加并发量	
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		.. ..
+		worker_processes  2;                    //与CPU核心数量一致
+		events {
+		worker_connections 65535;        //每个worker最大并发连接数
+		}
+		.. ..
+		[root@proxy ~]# nginx -s reload
+	3）优化Linux内核参数（允许打开的最大文件数量）
+		[root@proxy ~]# ulimit -a                        //查看所有属性值
+		[root@proxy ~]# ulimit -Hn 100000                //设置硬限制（临时规则）
+		[root@proxy ~]# ulimit -Sn 100000                //设置软限制（临时规则）
+		[root@proxy ~]# vim /etc/security/limits.conf
+		    .. ..
+		*               soft    nofile            100000
+		*               hard    nofile            100000
+		#该配置文件分4列，分别如下：
+		#用户或组    硬限制或软限制    需要限制的项目   限制的值
+	4）优化后测试服务器并发量（因为客户端没调内核参数，所以在proxy测试）
+		[root@proxy ~]# ab -n 2000 -c 2000 http://192.168.4.5/
+
+    步骤四：优化Nginx数据包头缓存
+	1）优化前，使用脚本测试长头部请求是否能获得响应
+		[root@proxy ~]# cat lnmp_soft/buffer.sh     //利用地址栏过长进行攻击服务器脚本
+		#!/bin/bash
+		URL=http://192.168.4.5/index.html?
+		for i in {1..5000}
+		do
+		    URL=${URL}v$i=$i
+		done
+		curl $URL                                //经过5000次循环后，生成一个长的URL地址栏
+		[root@proxy ~]# ./buffer.sh
+		.. ..
+		<center><h1>414 Request-URI Too Large</h1></center>        //提示头部信息过大
+	2）修改Nginx配置文件，增加数据包头部缓存大小
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		.. ..
+		http {
+		client_header_buffer_size    1k;        //默认请求包头信息的缓存    
+		large_client_header_buffers  4 4k;        //大请求包头部信息的缓存个数与容量
+		.. ..
+		}
+		[root@proxy ~]# nginx -s reload
+   	3）优化后，使用脚本测试长头部请求是否能获得响应
+		[root@proxy ~]#cat cat buffer.sh 
+		#!/bin/bash
+		URL=http://192.168.4.5/index.html?
+		for i in {1..5000}
+		do
+		    URL=${URL}v$i=$i
+		done
+		curl $URL
+		[root@proxy ~]# ./buffer.sh
+    步骤五：浏览器本地缓存静态数据
+	1）使用Firefox浏览器查看缓存
+		以Firefox浏览器为例，在Firefox地址栏内输入about:cache将显示Firefox浏览器的缓存信息，如图-3所示，点击List Cache Entries可以查看详细信息。
+	2）清空firefox本地缓存数据，如图-4所示。
+		注: 浏览器带缓存功能,缓存什么,缓存多久,取决于服务器
+	3）修改Nginx配置文件，定义对静态页面的缓存时间
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		server {
+     	 	  listen       80;
+      	  server_name  localhost;
+	        location / {
+      	      root   html;
+      	      index  index.html index.htm;
+       		    }
+		  location ~* \.(jpg|jpeg|gif|png|css|js|ico|xml)$ {    //正则匹配不区分大小写
+			expires  30d;            //定义客户端缓存时间为30天
+	            }
+		}
+		[root@proxy ~]# cp /usr/share/backgrounds/day.jpg /usr/local/nginx/html
+		[root@proxy ~]# nginx -s reload
+	4）优化后，使用Firefox浏览器访问图片，再次查看缓存信息
+		[root@client ~]# firefox http://192.168.4.5/day.jpg
+    
+
+     步骤六：日志切割
+	日志文件越来越大怎么办？单个文件10G? 如何切割？（非常常见的面试题）
+	方案(关键步骤)：
+		1. 把旧的日志重命名
+		2. kill USR1 PID(nginx的进程PID号)
+	1）手动执行
+		备注：/usr/local/nginx/logs/nginx.pid文件中存放的是nginx的进程PID号。
+		[root@proxy ~]#  mv access.log access2.log         //改名
+		[root@proxy ~]# kill -USR1 $(cat /usr/local/nginx/logs/nginx.pid)  //kill是给程序传递一个信号,可以使用kill -l查看所有的信号,使用-USR1表示告知nginx进程重载配置文件,更新日志文件(没有则创建新的文件),实现相对平滑的不关机更改
+	2）自动完成
+		每周5的03点03分自动执行脚本完成日志切割工作。
+		[root@proxy ~]# vim /usr/local/nginx/logbak.sh
+		#!/bin/bash
+		date=`date +%Y%m%d`              //获取日期
+		logpath=/usr/local/nginx/logs     //获取日志路径
+		mv $logpath/access.log $logpath/access-$date.log    //改名备份访问日志
+		mv $logpath/error.log $logpath/error-$date.log      //改名备份错误日志
+		kill -USR1 $(cat $logpath/nginx.pid)         //告知nginx重载配置文件,更新日志文件
+		[root@proxy ~]# crontab -e      //设定计划任务,自动运行脚本
+		03 03 * * 5  /usr/local/nginx/logbak.sh
+    步骤七：对页面进行压缩处理
+	注:　目前所有的浏览器都支持gzip解压
+	1）修改Nginx配置文件
+		[root@proxy ~]# cat /usr/local/nginx/conf/nginx.conf
+		http {
+		.. ..
+		gzip on;                            //开启压缩
+		gzip_min_length 1000;                //小文件不压缩
+		gzip_comp_level 4;                //压缩比率,数字越大,起压缩程度越高
+		gzip_types text/plain text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript;   //对特定文件压缩，类型参考/usr/local/nginx/conf/mime.types
+		.. ..
+		}
+
+    步骤八：服务器内存缓存(默认关闭此功能)
+	1）如果需要处理大量静态文件，可以将文件缓存在内存，下次访问会更快。
+		http { 
+		open_file_cache max=2000 inactive=20s; //设置服务器最大缓存2000个文件句柄，关闭20秒内无请求的文件句柄
+	        open_file_cache_valid 60s;        //文件句柄的有效时间是60秒，60秒后过期,与访问的间隔时间无关
+	        open_file_cache_min_uses 5;       //只有访问次数超过5次会被缓存
+	        open_file_cache_errors off;       //关闭缓存报错功能 		
+		} 
+
+
+555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555
+day05:
+
+案例1：PHP的本地Session信息
+    通过Nginx调度器负载后端两台Web服务器，实现以下目标：
+    部署Nginx为前台调度服务器
+    调度算法设置为轮询
+    后端为两台LNMP服务器
+    部署测试页面，查看PHP本地的Session信息
+方案:
+    概念：
+	Session：存储在服务器端，保存用户名、登陆状态等信息。
+	Cookies：由服务器下发给客户端，保存在客户端的一个文件里。
+	保存的内容主要包括：SessionID。
+	实验拓扑环境：
+	使用4台RHEL7虚拟机，其中一台作为Nginx前端调度器服务器（eth0:192.168.4.5,eth1:192.168.2.5）、两台虚拟机部署为LNMP服务器，分别为Web1服务器（192.168.2.100）和Web2服务器（192.168.2.200），另外一台作为测试用的Linux客户机（192.168.4.10）
+    步骤一：部署后端LNMP服务器相关软件
+	注意:以下部署LNMP服务器的操作，需要在两台后端服务器做相同的操作，下面我们以一台Web2服务器（192.168.2.200）为例，对Web1服务器执行相同操作即可。
+	1）使用yum安装基础依赖包
+		[root@web2 ~]# yum -y install gcc openssl-devel pcre-devel
+		.. ..
+	2）源码安装Nginx
+		[root@web2 ~]# tar -xf nginx-1.12.2.tar.gz
+		[root@web2 ~]# cd nginx-1.12.2
+		[root@web2 nginx-1.12.2]#  ./configure   \
+		> --with-http_ssl_module 
+		[root@web2 nginx-1.12.2]# make && make install
+	3）安装MariaDB数据库
+		[root@web2 ~]# yum -y install  mariadb  mariadb-server  mariadb-devel
+	4）安装PHP	
+		[root@web2 ~]# yum -y install  php  php-mysql
+		[root@web2 ~]# yum -y install  php-fpm
+	5）修改Nginx配置文件（修改默认首页与动静分离）
+		[root@web2 ~]# vim /usr/local/nginx/conf/nginx.conf
+		location / {
+	            root   html;
+	 	      index  index.php  index.html   index.htm;
+	      	}
+		location  ~  \.php$  {
+	            root           html;
+	            fastcgi_pass   127.0.0.1:9000;
+	            fastcgi_index  index.php;
+	           #fastcgi_param   SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+	            include        fastcgi.conf;
+	        }
+    步骤二：启动LNMP服务器相关的服务
+	1）启动Nginx服务
+	    这里需要注意的是，如果服务器上已经启动了其他监听80端口的服务软件（如httpd），则需要先关闭该服务，否则会出现冲突。
+		[root@web2 ~]# systemctl stop  httpd                //如果该服务存在，则关闭该服务
+		[root@web2 ~]# /usr/local/nginx/sbin/nginx
+		[root@web2 ~]# netstat -utnlp | grep :80
+		tcp    0    0 0.0.0.0:80        0.0.0.0:*        LISTEN        32428/nginx         
+	2）启动MySQL服务
+		[root@web2 ~]# systemctl start mariadb
+		[root@web2 ~]# systemctl status mariadb
+	3）启动PHP-FPM服务
+		[root@web2 ~]# systemctl start  php-fpm
+		[root@web2 ~]# systemctl status php-fpm
+	
+    步骤三：部署前端Nginx调度服务器
+	1）使用源码安装nginx软件（如果Nginx软件包已安装可以忽略此步骤）
+	2）修改Nginx配置文件，实现代理服务器
+	Nginx配置文件中，通过upstream定义后端服务器地址池，默认调度策略为轮询，使用proxy_pass调用upstream定义的服务器地址池：
+		[root@proxy ~]# vim /usr/local/nginx/conf/nginx.conf
+		.. ..
+		upstream webs  {
+	        server 192.168.2.100:80;
+	        server 192.168.2.200:80;
+		}
+		 server  {
+	          listen       80;
+	          server_name  localhost;
+	          location  /  {
+	              proxy_pass http://webs;
+	            root   html;
+	            index  index.php index.html index.htm;
+	             }
+		  }
+	3）重新加载配置文件
+		[root@proxy ~]# /usr/local/nginx/sbin/nginx -s reload
+
+    步骤四：测试环境是否配置成功
+	[root@client ~]# curl  http://192.168.4.5/index.html        //查看是否有数据
+    步骤五：部署测试页面
+	1）部署测试页面(Web1服务器）。
+	测试页面可以参考lnmp_soft/php_scripts/php-memcached-demo.tar.gz。
+		[root@web1 ~]# cd lnmp_soft/php_scripts/
+		[root@web1 php_scripts]# tar -xf php-memcached-demo.tar.gz
+		[root@web1 php_scripts]# cd php-memcached-demo
+		[root@web1 php-memcached-demo]# cp -r  *  /usr/local/nginx/html/
+	2）浏览器直接访问后端服务器的测试页面（Web1服务器）。
+		[root@web1 ~]# firefox http://192.168.2.100            //填写账户信息
+		[root@web1 ~]# cd /var/lib/php/session/            //查看服务器本地的Session信息
+		[root@web1 ~]# ls
+		sess_ahilcq9bguot0vqsjtd84k7244                        //注意这里的ID是随机的
+		[root@web1 ~]# cat sess_ahilcq9bguot0vqsjtd84k7244
+	注意：可用修改index.php和home.php两个文件的内容，添加页面颜色属性，以区别后端两台不同的服务器:<body bgcolor=blue>。
+	3）部署测试页面(Web2服务器）。
+	测试页面可以参考lnmp_soft/php_scripts/php-memcached-demo.tar.gz。
+		[root@web2 ~]# cd lnmp_soft/php_scripts/
+		[root@web2 php_scripts]# tar -xf php-memcached-demo.tar.gz
+		[root@web2 php_scripts]# cd php-memcached-demo
+		[root@web2 php-memcached-demo]# cp -a  *  /usr/local/nginx/html/
+	4）浏览器直接访问后端服务器的测试页面（Web2服务器）。
+		[root@web2 ~]# firefox http://192.168.2.100             //填写账户信息
+		[root@web2 ~]# cd /var/lib/php/session/            //查看服务器本地的Session信息
+		[root@web2 ~]# ls
+		sess_qqek1tmel07br8f63d6v9ch401                        //注意这里的ID是随机的
+		[root@web2 ~]# cat sess_qqek1tmel07br8f63d6v9ch401    
+	注意：可用修改index.php和home.php两个文件的内容，添加页面颜色属性，以区别后端两台不同的服务器:<body bgcolor=green>。
+	5）浏览器访问前端调度器测试（不同后端服务器Session不一致）。
+	推荐使用google浏览器测试。
+		[root@client ~]# google-chrome http://192.168.4.5
+	//填写注册信息后，刷新，还需要再次注册，说明两台计算机使用的是本地Session
+	//第二台主机并不知道你再第一台主机已经登录，第一台主机的登录信息也没有传递给第二台主机
+
+案例2：构建memcached服务
+    本案例要求先快速搭建好一台memcached服务器，并对memcached进行简单的增、删、改、查操作：
+	安装memcached软件，并启动服务
+	使用telnet测试memcached服务
+	对memcached进行增、删、改、查等操作
+    验证时需要客户端主机安装telnet，远程memcached来验证服务器的功能：
+		
+	memcached数据库服务: 为一个迷你型的数据库,只存放在内存之中
+	set name 0 180 3     //set 为添加新的变量(变量存在则替换覆盖),name为变量名,0表示不压缩,180表示缓存时间,3为需要存储的数据字节数量,回车之后可以输入变量的值(不支持换行写变量)
+	get name    //获取变量的值
+	add name 0 180 10    //新建,当变量不存在时则添加,否则直接报错,有助于避免将已有的变量覆盖
+	replace name 0 180 10   //替换,如果变量不存在则报错
+	append name 0 180 10    //向变量中追加数据
+	delete name    //删除变量
+	flush_all    //清空所有
+	quit    //退出登录
+
+    由于轮询算法,当客户端刷新页面时会访问不同的后端服务器,会被要求重新输入账户密码信息(当页面要使用账户密码登录时,由于新的服务器没有与客户端进行过连接,因此新的服务器又会重新生成cookie(发给客户端)和session(服务器本地生成),要求用户重新登录),为避免用户因为轮询算法自动访问不同的服务器引起的重复登录,可以使用以下两种方法:
+	1.使用hash算法,实现同一主机访问同一个后端服务器,从而保障了session和cookie信息不变,当用户刷新网页时,服务器会识别已经登录
+	2.将session共享给所有的后端服务器(通过将session存在代理服务器proxy上,所有的后端都能使用,proxy需要安装memcached服务),使用memcached服务实现所有后端服务器共享session(需要后端服务器安装php-pecl-memcache模块,还需要修改/etc/php-fpm.d/www.conf配置文件,指定memcache的位置)
+
+案例3：LNMP+memcached
+    沿用练习一和练习二，部署LNMP+memcached网站平台,通过PHP页面实现对memcached服务器的数据操作，实现以下目标：
+为PHP安装memcache扩展
+创建PHP页面，并编写PHP代码，实现对memcached的数据操作
+	
+   
+
+
+
+
+Java:
+	java是一种跨平台的 面向对象的程序设计语言,java技术具有卓越的通用性,高效性,平台移植性和安全性.
+	java体系: Java SE(标准版)  Java EE(企业版)  Java ME(移动版)
+
+	jdk(Java Development Kit)是Java语言的软件开发工具包,
+	JDK是整个Java的核心
+		java运行环境
+		Java工具(编译,排错,打包等工具)
+		Java基础的类库(lib下)
+	JRE(Java Runtime Environment),java运行环境,JRE是JDK子集,包含:
+		Java虚拟机(jvm)
+		Java核心类库和支持文件
+		不包含开发工具(JDK)编译器,调试器和其他工具
+		
+
+	Java Servlet,java扩展Web服务器功能的组件规范	
+	常见Servlet容器
+	IBM       webshpere
+	Oracle    weblogic
+	Apache    tomcat    免费开源 
+	RedHat    Jboss
+
+    tomcat每次启动都需要读取足够多的随机数据(8005端口启动慢的主要原因)
+	tomcat-----random(tomcat只会读/dev/random随机数据)
+	当random读取速度很慢的时候,可以先备份一下random,然后再为/dev/urandom(当random读取很慢时,urandom读取较快)创建一个软连接,并命名为random即可,然后再将tomcat进程全关,再正常重启即可
+	
+
+
+三种web虚拟主机的配置格式对比:
+http:
+	<virtualhost *:80>
+	servername
+	documentroot
+	</virtualhost>
+nginx:
+	server {
+		listen 80;
+		server_name
+		root
+	}
+tomcat:
+	<Connector port=8080>    //不同于上面两种工具,其端口设置为单独的一行指定
+	... ...
+	<Host name=www.a.com appBase=webapps>    //webapps是指真实路径的父目录,真实路径是webapps/ROOT/下,此时用的是相对路径,也可以使用绝对路径
+	</Host>
+注: 
+	tomcat中可以直接设置默认的虚拟主机,在defaultHost参数后面设置
+	<Context path="" docBase="base"/>    //此命令为跳转命令,path是指地址栏后面的内容,与nginx的location相似,此时表示直接访问域名时,将实现首页的跳转到base下的页面(默认是在ROOT下),或使用绝对的路径表示
+jar -cvf a.war desktop
+
+
+666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666
+
+
+
+
+7777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777
+day07:
+
+client---------------varnish---------------------web1
+			代理+缓存页面
+注意:nginx也是有缓存功能的
+squid,varnish,niginx,Apache cache 都可以做代理+缓存
+
+
+
+CDN(content delivery network)内容分发网络,实现将一个中心服务器的源的内容分发到不同的子服务器中
+中小型的企业一般都是购买,只有较有实力的公司才会自行搭建
+
+达内tmooc,视频(北京)--->亦庄机房(源文件)通过cdn分发内容:
+	天坛中心
+	北京中心
+	....
+
+
+
+  
+
+888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888
+day08
+制作rpm包
+    rpm相当于一个压缩包,将源码包制作成rpm,需要提前设置好源码的模块
+    1.装包: rpm-build
+    	原理: 设置相关配置信息,将源码包进行完整的一次安装流程写入文件,将主文件打包复制,下次使用rpm包时相当于解压释放
+    2.目录说明:
+	ls /root/rpmbuild    //查看已经生成的目录结构
+    	BUILD:	//编译rpm包的临时目录 	
+	BUILDROOT:	//编译后生成的软件临时安装目录
+	RPMS:		//最终生成的可安装rpm包的所在目录
+	SOURCES:	//所有源代码和补丁文件的存放目录
+	SPECS:	//存放SPEC文件的目录(重要)
+	SRPMS:	//软件最终的rpm源码格式存放路径(相当于是RPMS+SPECS的备份)
+    3.准备工作，将源码软件复制到SOURCES目录
+    4.创建并修改SPEC配置文件
+	vim /root/rpmbuild/SPECS/nginx.spec    //在SPECS目录下新建的*.spec文件都会自带格式,修改相关的配置信息
+    注: 开源协议:GPL ASL
+	GPL协议主要内容:
+	1.copy        随意复制
+	2.modify      修改
+	3.release     发布
+	4.succession  继承性
+   5.rpmbuild -ba /root/rpmbuild/SPECS/nginx.spec
+    6.查询/验证一个软件包:
+	rpm -qpi RPMS/x86_64/nginx-1.12.2-10.x86_64.rpm
+    7.查看安装目录
+	rpm -qpl nginx-1.12.2-10.x86_64.rpm
+
+
+
+*********************************************************************************************************
+VPN(Vitual Private Network)
+在公网上建立私网,进行加密通讯(独享的隧道)
+多用于集团公司的各地子公司建立连接
+连接完成后,各个地区的子公司可以像局域网一样通讯
+在企业网络中有广泛应用
+偶尔可以用于翻墙
+主流VPN技术(gre(不支持windows),pptp,l2tp+ipsec,ssl)
+
+
+难易程度:
+gre(不用装包,使用命令行完成设置)<pptp(装一个包,3个配置文件)<l2tp(建立私网)+ipsec(加密){装两个软件,分别修改配置文件}
+安全程度:
+gre<pptp<ipsec
+
+查看模块化命令:
+linux模块化设计
+lsmod           //查看模块列表
+lsmod | grep ip_gre   
+modprobe ip_gre    //加载模块
+modinfo ip_gre    //查看模块详细信息
+rmmod    //卸载模块
+
+
+rpm -qc pptp    //查看配置文件的路径
+
+
+
+
+*************************************************************************
+pptp
+
+echo  "1" > /proc/sys/net/ipv4/ip_forward    //开启路由转发,相当开启软件路由
+
+
+
+
+
+**************************************************************************
+L2TP+IPSec VPN
+部署IPSec服务:
+
+
+
+
+部署XL2TP服务:
+    1）安装软件包（软件包参考lnmp_soft）
+	yum localinstall xl2tpd-1.3.8-2.el7.x86_64.rpm
+    2) 修改xl2tp配置文件（修改3个配置文件的内容）
+	(1) 修改主配置文件(修改2行内容):
+	vim  /etc/xl2tpd/xl2tpd.conf            
+	... ...
+	ip range = 192.168.3.128-192.168.3.254                    //分配给客户端的IP池
+	local ip = 201.1.2.10                                    //VPN服务器的IP地址
+	... ...
+	(2) 修改认证配置(修改3行内容):
+	vim /etc/ppp/options.xl2tpd
+	require-mschap-v2                                         //添加一行，强制要求认证
+	#crtscts                                                //注释或删除该行,新版本不能识别
+	#lock                                                //注释或删除该行,新版本不能识别
+	(3) 修改密码文件(新增1行)
+	vim /etc/ppp/chap-secrets
+	jacob   *       123456  *                //账户名称   服务器标记   密码   客户端IP
+   3）启动服务
+	systemctl start xl2tpd
+	netstat  -ntulp |grep xl2tpd 
+    4）设置路由转发，防火墙
+	echo "1" > /proc/sys/net/ipv4/ip_forward
+	firewall-cmd --set-default-zone=trusted
+    5）翻墙设置（非必需操作）
+	iptables -t nat -A POSTROUTING -s 192.168.3.0/24 \
+	>  -j SNAT --to-source 201.1.2.10
+
+
+
+
+
+
+
+999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999
+day09
+回顾:
+gre
+	lsmod
+	modprobe
+	ip tunnel add
+	ip link
+
+pptp
+	3个配置文件
+	VPN私有网络
+	localip    (1)
+	remoteip    (1)
+	ms-dns 8.8.8.8  (2)
+	用户名和密码    (3)
+	
+xl2tp+ipsec
+	/etc/ipsec.d/xxx.conf 加密算法
+	/etc/ipsec.d/xxx.secrets PSK预共享密钥
+	xl2tp:修改3 个配置文件(与pptp相似)
+	
+*************************************
+时间同步NTP:
+vim /etc/chrony.conf
+...
+    #server 0.centos.pool.ntp.org iburst         //server用户客户端指向上层NTP服务器,默认注释
+    allow 192.168.4.0/24    //做为服务器
+    deny 192.168.168.4.1
+    local stratum 10    //设置NTP服务器的层数量,一共有15层,默认10层(在NTP中，定义了时间按照服务器的等级传播，按照离外部时钟源远近将所有的服务器归入不同的Stratum（层）中)
+****************************************
+集群:
+一组通过调整网络互联的计算组,并以单一系统的模式加以管理
+装很多服务器集中起为,一起提供同一种服务,在客户看来就像是只有一个服务器
+可以在付出较低成本的情况下获得在性能,可靠性,灵活性方面的相对较高的收益
+任务调度是集群系统中的核心技术
+
+集群目的
+    提高性能: 如计算密集型应用,如天预报,核试验模拟
+    降低成本: 相对百万美元级的超级教育处机,价格便宜
+    提高可扩展性: 只要增加集群节点即可
+    增强可靠性: 多个节点完成相同功能,避免单点失败
+集群的分类
+    高性能计算集群HPC: 通过以集群开发的并行应用程序,解决复杂的科学问题
+    负载均衡(LB)集群: 客户端负载在计算机集群中尽可能平均分摊
+    高可用(HA)集群: 避免单点故障,当一个系统发生故障时,可以快速迁移
+
+搭建集群常用软件: 
+nginx
+lvs(小米,阿里,发明人为中国人章文嵩)
+haproxy(红帽)
+F5----big-ip   收费软件
+
+LVS集群组成
+    前端: 负载均衡层
+    	由一台或多台负载调度器构成
+    中间: 服务器群组层 
+    	由一组实际运行应用服务的服务器组成
+    底端(后端): 数据共享存储层
+    	提供共享存储空间的存储区域
+    	
+LVS术语
+    Director Server: 调度服务器
+    	将负载分发到Real server的服务器
+    Real Server: 真实服务器
+    	真正提供应用服务的服务器
+    VIP:虚拟IP
+    	公布给用户访问的虚拟IP地址
+    RIP:真实IP
+    	集群节点上使用的IP地址
+    DIP:调度器连接节点服务器的IP地址
+director server VIP DIP
+real server RIP
+LVS工作模式
+    VS/NAT
+    	通过网络地址转换实现的虚拟服务器
+    	大并发访问时,调度器的性能会成为瓶颈
+    VS/DR
+    	直接使用路由技术实现虚拟服务器
+    	节点服务器需要配置VIP,注意MAC地址广播
+    VS/TUN
+    	通过隧道方式实现虚拟服务器
+    FullNAT
+	结合ospf动态路由协议,实现更强大的NAT模式
+    	
+ipvsadm命令用法(命令只验证语法正确性,不验证内容正确性):
+    ipvsadm -A	添加集群的虚拟服务器
+    ipvsadm -a	添加真实服务器
+    ipvsadm -E	修改集群的虚拟服务器
+    ipvsadm -e	修改后端真实服务器
+    ipvsadm -D	删除虚拟服务器
+    ipvsadm -d	删除真实服务器
+    ipvsadm -C	清空所有规则
+    ipvsadm -L	查看LVS规则表
+	....
+	
+
+负载均衡调度算法:
+    round robin[rr]--------轮询   (极端情况容易出现第一个后端服务器负载过大)
+    weighted round robin[wrr]-------加权轮询
+    source hash [sh]-------------IP hash类似功能
+    least connect[lc]-----最少连接  (每交都找最小并发量的服务器)
+    weighted least connect[wlc]----加权最少连接 (当最不连接数的服务器有多台时)
+   
+    
+部署LVS-NAT集群:
+    0.准备:
+    	1) 装包:
+	    yum install -y ipvsadm
+    	2) 开启路由功能(确认调度器的路由转发功能,如果已经开启，可以忽略)
+    	    echo 1 > /proc/sys/net/ipv4/ip_forward    //1为开启路由功能,0为关闭,且此命令只能echo重定向进去
+    	    echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf    //设置永久生效,相当于将斜线"/"换成"."
+    1.创建LVS虚拟集群服务器(VIP)
+	ipvsadm -A -t 192.168.4.5:80 -s wrr    //-t表示使用TCP协议,可换为-d表示UDP协议,-s(scheduler)调度程序,wrr为加权轮询
+    2.为LVS虚拟集服务器添加真实后端服务器(RIP)
+	ipvsadm -a -t 192.168.4.5:80 -r 192.168.2.100 -m -w 1    //-m(masq)表示NAT模式(-i表示tunnel模式,-g为DR模式(直连路由模式,默认模式)),-r(real)指定真实服务器,真实服务器不加端口,默认与集群服务器保持一致,-w 1表示权重
+    3.查看LVS集群服务器的详细信息
+	ipvsadm -Ln
+    4.修改集群服务器设置
+    	ipvsadm -E -t 192.168.4.5:80 -s rr    //修改调度器的算法为rr
+    5.修改后端真实服务器
+	ipvsadm -e -t 192.168.4.5:80 -r 192.168.2.202 -g  //单独修改真实后端服务器调度算法为直连路由模式
+    6.永久保存所有规则
+	ipvsadm-save -n > /etc/sysconfig/ipvsadm    //ipvsadm-save -n 可以查看到已经保存的规则
+
+
+案例: 部署LVS-DR集群
+	使用LVS实现DR模式的集群调度服务器，为用户提供Web服务：
+	客户端IP地址为192.168.4.10
+	LVS调度器VIP地址为192.168.4.15
+	LVS调度器DIP地址设置为192.168.4.5
+	真实Web服务器地址分别为192.168.4.100、192.168.4.200
+	使用加权轮询调度算法，web1的权重为1，web2的权重为2
+    方案:使用4台虚拟机，1台作为客户端、1台作为Director调度器、2台作为Real Server
+    原理: 
+	为什么lvs不能只使用一个IP4.5,后端服务器再伪装为4.5?
+	1.一般都是设置VIP给客户端访问,而DIP为物理网卡,与后端服务器通讯
+	2.当lvs服务器想用一个IP既当VIP又当DIP时,由于后端服务器此时也要伪装成VIP,则此时会出错,因为相当lvs在给自己转发
+    注:    
+	LVS工作原理与nginx不同:	
+	    nginx: 代理服务器
+	    LVS(NAT)==具有轮询功能的路由器(ip_forward=1,相当于linux开启了软路由),web1和web2也要开启网关
+
+	关于主机的网卡:
+	    可以直接配置物理网卡的IP地址
+	    同一个网卡可以配置多个IP(虚拟网卡)
+    步骤一：配置实验网络环境
+    1）设置Proxy代理服务器的VIP和DIP
+	注意：为了防止冲突，VIP必须要配置在网卡的虚拟接口！！！
+	cd /etc/sysconfig/network-scripts/
+	cp ifcfg-eth0{,:0}    //复制出一份物理网卡eth0的配置,用于修改为虚拟接口
+	vim ifcfg-eth0    //配置物理网卡eth0,为DIP
+	  TYPE=Ethernet
+	  BOOTPROTO=none
+	  NAME=eth0
+	  DEVICE=eth0
+	  ONBOOT=yes
+	  IPADDR=192.168.4.5
+	  PREFIX=24         //此项也可以写为NETMASK=255.255.255.0
+	vim ifcfg-eth0:0  //配置虚拟网卡eth0:0,为VIP
+	  TYPE=Ethernet
+	  BOOTPROTO=none
+	  DEFROUTE=yes
+	  NAME=eth0:0
+	  DEVICE=eth0:0
+	  ONBOOT=yes
+	  IPADDR=192.168.4.15
+	  PREFIX=24
+	systemctl restart network     //如果长时间无法启动,则执行systemctl restart NetworkManager
+    2) 设置Web1服务器网络参数
+    	nmcli connection modify eth0 ipv4.method manual ipv4.addresses 192.168.4.100/24 connection.autoconnect yes
+    	nmcli connection up eth0
+    	接下来给web1配置VIP地址。
+	注意：这里的子网掩码必须是32（也就是全255），网络地址与IP地址一样，广播地址与IP地址也一样。
+	cd /etc/sysconfig/network-scripts/
+	cp ifcfg-lo{,:0}     
+	vim ifcfg-lo:0    //编辑VIP
+	  DEVICE=lo:0
+	  IPADDR=192.168.4.15
+	  NETMASK=255.255.255.255    //此项也可以写为PREFIX=32
+	  NETWORK=192.168.4.15
+	  BROADCAST=192.168.4.15
+	  ONBOOT=yes
+	  NAME=lo:0
+	防止地址冲突的问题：
+	这里因为web1也配置与代理一样的VIP地址，默认肯定会出现地址冲突；
+	sysctl.conf文件写入这下面四行的主要目的就是访问192.168.4.15的数据包，只有调度器会响应，其他主机都不做任何响应，这样防止地址冲突的问题。
+	 vim /etc/sysctl.conf    
+	 #手动写入如下4行内容
+	  net.ipv4.conf.all.arp_ignore = 1
+	  net.ipv4.conf.lo.arp_ignore = 1
+	  net.ipv4.conf.lo.arp_announce = 2
+	  net.ipv4.conf.all.arp_announce = 2
+	  #当有arp广播问谁是192.168.4.15时，本机忽略该ARP广播，不做任何回应
+	  #本机不要向外宣告自己的lo回环地址是192.168.4.15
+	  sysctl -p     //重新装载/etc/sysctl.conf配置文件
+	重启网络服务，设置防火墙与SELinux
+    3) 设置Web2服务器网络参数
+    	与Web1服务器网络参数设置基本一样
+    	
+    步骤二：配置后端Web服务器(httpd,nginx,tomcat都可以)
+    1）自定义Web页面
+    2）启动Web服务器软件
+    
+    步骤三：proxy调度器安装软件并部署LVS-DR模式调度器
+    1）安装软件ipvsadm
+    2）清理之前实验的规则，创建新的集群服务器规则
+    3）添加真实服务器(-g参数设置LVS工作模式为DR模式，-w设置权重)
+    4）查看规则列表，并保存规则
+    步骤四：客户端测试
+    客户端使用curl命令反复连接http://192.168.4.15，查看访问的页面是否会轮询到不同的后端真实服务器。
+扩展知识：默认LVS不带健康检查功能，需要自己手动编写动态检测脚本，实现该功能：(参考脚本如下，仅供参考)
+    [root@proxy ~]# vim check.sh
+	#!/bin/bash
+	VIP=192.168.4.15:80
+	RIP1=192.168.4.100
+	RIP2=192.168.4.200
+	while :
+	do
+	   for IP in $RIP1 $RIP2
+	   do
+	           curl -s http://$IP &>/dev/vnull
+	if [ $? -eq 0 ];then
+	            ipvsadm -Ln |grep -q $IP || ipvsadm -a -t $VIP -r $IP
+	        else
+	             ipvsadm -Ln |grep -q $IP && ipvsadm -d -t $VIP -r $IP
+	        fi
+	   done
+	sleep 1
+	done
+
+*************************************************************************************************
+day10
+Keepalived(vrrp协议,虚拟路由)
+    1.VRRP实现VIP,高可用
+     2.自动配置LVS,健康检查
+
+linux 有两个防火墙
+firewall    //应用程序
+iptables    //内核程序,firewall中设置的数据都会写入此内核配置中
+
+部署Keepalived服务:
+    1）修改web1服务器Keepalived配置文件
+	修改虚拟路由id-----router_id  <任意名称>
+	修改state MASTER|BACKUP    //此状态是指在机器开启时的初始默认状态设置
+	修改policy 100    //修改优先级,机器会优先读取初始默认的状态,待机器准备好了后,再进行优先级对比,此时才是最终决定谁拥有VIP.
+	修改虚拟路由IP-----virtual_ipaddress----192.168.4.80
+    2) 修改web2服务器Keepalived配置文件
+    	与web1一致
+    3) 启动服务
+    	systemctl start keepalived
+    4）配置防火墙和SELinux
+    注意事项: 只要启动keepalived都会自动添加一个drop的防火墙规则，需要清空！
+    	iptables -F   //-F选项为清空所有防火墙规则
+    	setenforce 0
+    5) 登录两台Web服务器查看VIP信息
+    	ip addr show    //或使用缩写: ip a s 
+    6) 客户端访问
+    	curl http://192.168.4.80
+    
+Keepalived+LVS服务器:
+    装包:   
+  
+  
+virtual_server 192.168.200.100 443 {       //设置ipvsadm的VIP规则(集群规则)
+    delay_loop 6
+    lb_algo wrr         //设置LVS调度算法为WRR 
+    lb_kind DR       //设置LVS的模式为DR
+#    persistence_timeout 50    //设置访问真实IP的持续时间,在该时间内始终访问相同的服务器
+    protocol TCP                //指定LVS的协议为TCP
+
+    real_server 192.168.201.100 443 {      //真实后端服务器相关配置
+      weight 1
+      SSL_GET {                         //此为健康检查选项,一般支持SSL_GET,HTTP_GET,TCP_CHECK等
+            url {
+              path /
+              digest ff20ad2481f97b1754ef3e12ecd3a9cc    //使用md5sum计算后端服务器网页根目录的哈希值,放在此进行对比验证
+            }
+            url {
+              path /mrtg/
+              digest 9b3a0c85a887a256d6939da88aabd8cd
+            }
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+}
+
+
+
+***************
+配置HAProxy负载平衡集群
+装包: yum -y install haproxy
+配置: 
+global  全局配置
+defaults 默认配置
+listen  集群配置
+
+集群配置的两种格式:
+1.
+frontend  main *:80
+    use_backen static    //static是名称,可以任取
+backend static         //static为名称,与上面保持一致
+    balance     roundrobin      //调度算法
+    server      127.0.0.1:4331    //指定后端服务器
+
+2.
+listen webs *:80                    //不用分别写前端和后端的服务器,webs为集群名称,可任取
+	balance roundrobine       //调度算法
+	server web1 ip    //一个server一个后端服务器,web1为后端服务器名称
+	server web2 ip
+
+******************************************************************************************
+day11
+回顾:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
