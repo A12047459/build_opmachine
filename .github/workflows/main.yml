@@ -8,7 +8,7 @@ jobs:
     - name: Publish to Docker Repository
       uses: elgohr/Publish-Docker-Github-Action@master
       with:
-        name: 1204745933/my-file-test
+        name: 1204745933/github-myfile-action
         username: ${{ secrets.DOCKER_USERNAME }}
         PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 # name: Publish Docker image
