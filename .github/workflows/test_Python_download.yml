@@ -25,7 +25,6 @@ jobs:
       - name: download file
         run: |
           ./workspace/download_meepo.py
-        shell: python
       - name: check file
         run: |
           if [ -f ./workspace/meepo_linux_amd64.tar.gz ];then echo "ok"; else echo "no ok"; fi
