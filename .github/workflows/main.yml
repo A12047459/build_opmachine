@@ -24,7 +24,10 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
-
+        
+      - name: download meepo package
+        run: |
+          wget -o package/meepo_linux_amd64.tar.gz https://github.com/peerXu/meepo/releases/download/0.7.1/meepo_linux_amd64.tar.gz
       - name: Log in to Docker Hub
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
         with:
