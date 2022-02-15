@@ -22,3 +22,4 @@ jobs:
       - name: download meepo package
         run: |
           python workspace/download_meepo.py
+          if [ ! -f ./package/meepo_linux_amd64.tar.gz ]; then echo "error"; fi
