@@ -1,32 +1,32 @@
-name: Python package
+# name: Python package
 
-on: [push]
+# on: []
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-#     strategy:
-#       matrix:
-#         python-version: 3.7
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+# #     strategy:
+# #       matrix:
+# #         python-version: 3.7
     
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip 
-          pip install requests
-      - name: add 
-        run: |
-          pwd
-          ls
-          uname -a 
-      - name: download file
-        run: |
-          wget -O workspace/meepo.tar.gz https://github.com/peerXu/meepo/releases/download/0.7.1/meepo_linux_amd64.tar.gz
-      - name: check file
-        run: |
-          if [ -f ./workspace/meepo.tar.gz ];then echo "ok"; else echo "no ok"; fi
+#     steps:
+#       - uses: actions/checkout@v2
+#       - name: Set up Python ${{ matrix.python-version }}
+#         uses: actions/setup-python@v2
+#         with:
+#           python-version: 3.8
+#       - name: Install dependencies
+#         run: |
+#           python -m pip install --upgrade pip 
+#           pip install requests
+#       - name: add 
+#         run: |
+#           pwd
+#           ls
+#           uname -a 
+#       - name: download file
+#         run: |
+#           wget -O workspace/meepo.tar.gz https://github.com/peerXu/meepo/releases/download/0.7.1/meepo_linux_amd64.tar.gz
+#       - name: check file
+#         run: |
+#           if [ -f ./workspace/meepo.tar.gz ];then echo "ok"; else echo "no ok"; fi
