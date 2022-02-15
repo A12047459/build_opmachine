@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import requests
 
 def rq_download(url,path,name):
