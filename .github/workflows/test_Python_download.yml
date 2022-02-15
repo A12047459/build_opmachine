@@ -26,7 +26,7 @@ jobs:
           uname -a 
       - name: download file
         run: |
-          wget -O meepo.tar.gz https://github.com/peerXu/meepo/releases/download/0.7.1/meepo_linux_amd64.tar.gz
+          wget -O workspace/meepo.tar.gz https://github.com/peerXu/meepo/releases/download/0.7.1/meepo_linux_amd64.tar.gz
       - name: check file
         run: |
           if [ -f ./workspace/meepo.tar.gz ];then echo "ok"; else echo "no ok"; fi
