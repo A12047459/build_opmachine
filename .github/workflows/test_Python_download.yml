@@ -19,8 +19,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip 
           pip install requests
-      - name: download meepo package
+      - name: add 
         run: |
-          chmod +x ./workspace/download_meepo.py
+          chmod +x workspace/download_meepo.py
+      - name: download file
+        run: |
           ./workspace/download_meepo.py
-          if [ ! -f ./package/meepo_linux_amd64.tar.gz ]; then echo "failed"; fi
+        shell: python
+      - name: check file
+        run: |
+          if [ -f ./workspace/meepo_linux_amd64.tar.gz ];then echo "ok"; else echo "no ok"; fi
