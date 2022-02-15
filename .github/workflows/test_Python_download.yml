@@ -21,5 +21,6 @@ jobs:
           pip install requests
       - name: download meepo package
         run: |
-          python workspace/download_meepo.py
-          if [ ! -f ./package/meepo_linux_amd64.tar.gz ]; then echo "error"; fi
+          chmod +x ./workspace/download_meepo.py
+          ./workspace/download_meepo.py
+          if [ ! -f ./package/meepo_linux_amd64.tar.gz ]; then echo "failed"; fi
